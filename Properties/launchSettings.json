@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ImapCopy": {
+      "commandName": "Project",
+      "commandLineArgs": "backup imaps://simon.jakob.egli:0192iw0192IW%26@imap.mail.ch:993 simon.jakob.egli_mail.ch.7z"
+    }
+  }
+}

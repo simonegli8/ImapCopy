@@ -50,7 +50,11 @@ public class ImapCopier
             int totalMessages = progress != null ? await CountMessagesAsync(folders).ConfigureAwait(false) : 0;
             int processedMessages = 0;
 
-            SevenZipWriterOptions writerOptions = new SevenZipWriterOptions { LeaveStreamOpen = true };
+            SevenZipWriterOptions writerOptions = new SevenZipWriterOptions {
+                LeaveStreamOpen = true,
+                CompressionType = CompressionType.LZMA2,
+                CompressionLevel = 9
+            };
 
             using (IWriter writer = WriterFactory.OpenWriter(destination, ArchiveType.SevenZip, writerOptions))
             {
@@ -250,7 +254,7 @@ public class ImapCopier
 
     private static async Task<(IMailFolder rootFolder, List<IMailFolder> folders)> ResolveFoldersAsync(ImapClient client, string path)
     {
-        IList<IMailFolder> allFolders = await client.GetFoldersAsync(client.PersonalNamespaces[0]).ConfigureAwait(false);
+        IList<IMailFolder> allFolders = await client.GetFoldersAsync(client.PersonalNamespaces.FirstOrDefault()).ConfigureAwait(false);
 
         IMailFolder rootFolder = null;
         IEnumerable<IMailFolder> candidates = allFolders;

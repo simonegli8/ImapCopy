@@ -12,7 +12,7 @@
         <AssemblyName>ImapCopy</AssemblyName>
         <Product>ImapCopy</Product>
         <Copyright>Copyright © 2026</Copyright>
-        <ApplicationIcon>Resources/cert.ico</ApplicationIcon>
+        <ApplicationIcon>Resources/sync-envelope.ico</ApplicationIcon>
         <LangVersion>14</LangVersion>
         <GenerateBootstrapperOnBuild>true</GenerateBootstrapperOnBuild>
 
@@ -73,6 +73,10 @@
     <ItemGroup Condition="$(PackAsTool) == 'true'">
       <None Remove="Resources\**\*.*" />
       <AvaloniaResource Include="Resources\**\*.*" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Properties\" />
     </ItemGroup>
     
 </Project>
