@@ -1,0 +1,78 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <PackAsTool Condition="$(PackAsTool) == ''">true</PackAsTool>
+        <Nullable>enable</Nullable>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+        <PackAsTool Condition="$(PackAsTool) == ''">true</PackAsTool>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+        <AssemblyTitle>ImapCopy</AssemblyTitle>
+        <AssemblyName>ImapCopy</AssemblyName>
+        <Product>ImapCopy</Product>
+        <Copyright>Copyright © 2026</Copyright>
+        <ApplicationIcon>Resources/cert.ico</ApplicationIcon>
+        <LangVersion>14</LangVersion>
+        <GenerateBootstrapperOnBuild>true</GenerateBootstrapperOnBuild>
+
+        <Title>ImapCopy</Title>
+        <Authors>Simon Egli</Authors>
+        <Company>Estrellas de Esperanza</Company>
+        <Description>A cross platform OpenSource GUI/CLI tool to copy or backup mailboxes via IMAP.</Description>
+        <Copyright>Estrellas de Esperanza</Copyright>
+        <PackageProjectUrl>https://github.com/simonegli8/SSL-Certificate-Maker</PackageProjectUrl>
+        <PackageReadmeFile Condition="$(PackAsTool) == 'true'">tools/$(TargetFramework)/any/README.md</PackageReadmeFile>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <RepositoryUrl>https://github.com/simonegli8/SSL-Certificate-Maker</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>IMAP Copy, IMAP Backup</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <IncludeSymbols>true</IncludeSymbols>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+        <ToolCommandName>sslcertmaker</ToolCommandName>
+        <PackageOutputPath>nupkg</PackageOutputPath>
+        <RestoreSources>$(RestoreSources);..\nupkg;https://api.nuget.org/v3/index.json</RestoreSources>
+        <DebugType>embedded</DebugType>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="$(PackAsTool) == 'true'">
+        <TargetFrameworks>net10.0</TargetFrameworks>
+        <OutputType>Exe</OutputType>
+        <DefineConstants>$(DefineConstants);PackAsTool</DefineConstants>
+        <PackageId>ImapCopy</PackageId>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="$(PackAsTool) != 'true'">
+        <TargetFrameworks>netstandard2.0</TargetFrameworks>
+        <OutputType>Library</OutputType>
+        <PackageId>ImapCopy.Library</PackageId>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.0.3" />
+        <PackageReference Include="Avalonia.Desktop" Version="12.0.3" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.3" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.3" />
+        <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1">
+            <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+            <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="MailKit" Version="4.17.0" />
+        <PackageReference Include="MimeKit" Version="4.17.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <PackageReference Include="SharpCompress" Version="0.50.4" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Remove="nupkg\**\*.*" />
+    </ItemGroup>
+
+    <ItemGroup Condition="$(PackAsTool) == 'true'">
+      <None Remove="Resources\**\*.*" />
+      <AvaloniaResource Include="Resources\**\*.*" />
+    </ItemGroup>
+    
+</Project>
