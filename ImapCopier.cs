@@ -80,12 +80,16 @@ public class ImapCopier
                         {
                             MimeMessage message = await folder.GetMessageAsync(uid).ConfigureAwait(false);
 
-                            // fall back to the UID when a message has no Message-Id (rare, malformed messages),
-                            // and disambiguate on the (rarer still) case of two messages sharing a Message-Id
-                            string entryName = string.IsNullOrEmpty(message.MessageId)
-                                ? uid.Id.ToString()
-                                : SanitizeFileNameComponent(message.MessageId);
+                            // Uri.EscapeDataString both makes the name filesystem-safe (it percent-encodes
+                            // '/', ':', control characters, ...) and leaves '.', '-', '_', '~' untouched, so
+                            // the date/sender/subject parts stay readable in the resulting entry name
+                            string dateTime = message.Date.UtcDateTime.ToString("yyyy-MM-dd_HHmmss");
+                            string sender = message.From.Mailboxes.FirstOrDefault()?.Name ?? message.Sender?.Name ?? "unknown";
+                            string subject = message.Subject ?? string.Empty;
 
+                            string entryName = Uri.EscapeDataString($"{dateTime}_{sender.Replace(' ', '-')}_{subject.Replace(' ', '-')}");
+
+                            // disambiguate the (rare) case of two messages with the same date, sender and subject
                             if (!usedEntryNames.Add(entryName))
                                 entryName += "-" + uid.Id;
 
@@ -273,23 +277,6 @@ public class ImapCopier
             .ToList();
 
         return (rootFolder, folders);
-    }
-
-    // characters unsafe across common filesystems, kept fixed (rather than Path.GetInvalidFileNameChars())
-    // so a backup's entry names don't depend on the OS the tool happens to run on
-    private static readonly char[] InvalidFileNameChars = { '<', '>', ':', '"', '/', '\\', '|', '?', '*' };
-
-    private static string SanitizeFileNameComponent(string value)
-    {
-        char[] chars = value.ToCharArray();
-
-        for (int i = 0; i < chars.Length; i++)
-        {
-            if (char.IsControl(chars[i]) || Array.IndexOf(InvalidFileNameChars, chars[i]) >= 0)
-                chars[i] = '_';
-        }
-
-        return new string(chars);
     }
 
     // the flags a backup round-trips; \Recent is excluded since it cannot be set through STORE/APPEND
