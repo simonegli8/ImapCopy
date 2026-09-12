@@ -83,11 +83,12 @@ public class ImapCopier
                             // Uri.EscapeDataString both makes the name filesystem-safe (it percent-encodes
                             // '/', ':', control characters, ...) and leaves '.', '-', '_', '~' untouched, so
                             // the date/sender/subject parts stay readable in the resulting entry name
-                            string dateTime = message.Date.UtcDateTime.ToString("yyyy-MM-dd_HHmmss");
+                            string dateTime = message.Date.UtcDateTime.ToString("yyyy-MM-dd__HHmmss");
                             string sender = message.From.Mailboxes.FirstOrDefault()?.Name ?? message.Sender?.Name ?? "unknown";
                             string subject = message.Subject ?? string.Empty;
 
-                            string entryName = Uri.EscapeDataString($"{dateTime}_{sender.Replace(' ', '-')}_{subject.Replace(' ', '-')}");
+                            string entryName = Uri.EscapeDataString($"{dateTime}__{sender.Replace(' ', '-')}__{subject.Replace(' ', '-')}")
+                                .Replace("__"," ");
 
                             // disambiguate the (rare) case of two messages with the same date, sender and subject
                             if (!usedEntryNames.Add(entryName))
