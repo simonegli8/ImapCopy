@@ -29,6 +29,24 @@ public class ImapCopier
     // and deletes destination messages (matched by Message-Id) that no longer exist in the source folder
     public static Task Update(Uri source, Uri destination, Action<double> progress = null) => CopyMailboxAsync(source, destination, true, progress);
 
+    // checks that a uri is a well-formed imap(s) url, connects to the host and (if credentials are
+    // present) authenticates, then disconnects; throws (ArgumentException, MailKit's
+    // AuthenticationException, SocketException, ...) if any of that fails
+    public static async Task TestConnection(Uri uri)
+    {
+        if (uri == null)
+            throw new ArgumentNullException(nameof(uri));
+
+        if (!string.Equals(uri.Scheme, "imap", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(uri.Scheme, "imaps", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"'{uri.Scheme}' is not a valid imap(s) url scheme.", nameof(uri));
+
+        using ImapClient client = new ImapClient();
+
+        await ConnectAsync(client, uri).ConfigureAwait(false);
+        await client.DisconnectAsync(true).ConfigureAwait(false);
+    }
+
     // writes every message under the source mailbox (or a single folder/subtree, if a path is given in the uri)
     // as a .eml entry in a 7z archive, one top-level directory per mailbox folder; destination is left open
     // (must be a seekable stream: 7z back-patches its header once the archive is finalized)

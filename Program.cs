@@ -74,13 +74,8 @@ and <source> and <destination> are either an imap(s) url or a file path.");
                     Console.WriteLine(ex.ToString());
                 }
             } else {
-                //BuildAvaloniaApp()
-                //    .StartWithClassicDesktopLifetime(args);
-                Console.WriteLine(@"
-usage: imapcopy <command> <source> <destination>
-
-where <command> is one of copy, update, backup, restore
-and <source> and <destination> are either an imap(s) url or a file path.");
+                BuildAvaloniaApp()
+                    .StartWithClassicDesktopLifetime(args);
             }
         }
         // Avalonia configuration, don't remove; also used by visual designer.

@@ -52,6 +52,15 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="MailKit" Version="4.17.0" />
+        <PackageReference Include="MimeKit" Version="4.17.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <PackageReference Include="SharpCompress" Version="0.50.4" />
+    </ItemGroup>
+
+    <!-- the Avalonia GUI (under GUI\) is only built for the dotnet-tool version of the project;
+         the library-only build depends on nothing beyond what ImapCopier itself needs -->
+    <ItemGroup Condition="$(PackAsTool) == 'true'">
         <PackageReference Include="Avalonia" Version="12.0.3" />
         <PackageReference Include="Avalonia.Desktop" Version="12.0.3" />
         <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.3" />
@@ -60,10 +69,12 @@
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="MailKit" Version="4.17.0" />
-        <PackageReference Include="MimeKit" Version="4.17.0" />
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-        <PackageReference Include="SharpCompress" Version="0.50.4" />
+    </ItemGroup>
+
+    <ItemGroup Condition="$(PackAsTool) != 'true'">
+        <Compile Remove="GUI\**\*.cs" />
+        <AvaloniaResource Remove="GUI\**\*.axaml" />
+        <None Include="GUI\**\*.axaml" />
     </ItemGroup>
 
     <ItemGroup>
@@ -78,5 +89,5 @@
     <ItemGroup>
       <Folder Include="Properties\" />
     </ItemGroup>
-    
+
 </Project>
