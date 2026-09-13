@@ -2,7 +2,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using System;
-using System.Text;
 
 namespace ImapCopy
 {
@@ -99,34 +98,31 @@ namespace ImapCopy
 
         private string ComposeUrlFromFields()
         {
-            string scheme = SslCheckBox.IsChecked == true ? "imaps" : "imap";
-            string user = UserBox.Text ?? "";
-            string password = PasswordBox.Text ?? "";
+            bool ssl = SslCheckBox.IsChecked == true;
+            string scheme = ssl ? "imaps" : "imap";
             string host = HostBox.Text ?? "";
-            string port = PortBox.Text ?? "";
 
-            StringBuilder builder = new StringBuilder();
-            builder.Append(scheme).Append("://");
+            // host is required to build a real Uri; while it's still empty (e.g. the user hasn't
+            // typed it yet) fall back to just the scheme so the raw url box doesn't throw mid-edit
+            if (string.IsNullOrWhiteSpace(host))
+                return scheme + "://";
 
-            if (user.Length > 0 || password.Length > 0)
+            int.TryParse(PortBox.Text, out int port);
+
+            try
             {
-                builder.Append(Uri.EscapeDataString(user));
-
-                if (password.Length > 0)
-                    builder.Append(':').Append(Uri.EscapeDataString(password));
-
-                builder.Append('@');
+                // OriginalString (not ToString()) is what was actually passed to the Uri
+                // constructor, so it round-trips exactly, including percent-encoded credentials
+                string url = ImapCopier.ImapUrl(host, port, ssl, UserBox.Text, PasswordBox.Text).OriginalString;
+                return string.IsNullOrEmpty(path) ? url : url + "/" + path;
             }
-
-            builder.Append(host);
-
-            if (port.Length > 0)
-                builder.Append(':').Append(port);
-
-            if (!string.IsNullOrEmpty(path))
-                builder.Append('/').Append(path);
-
-            return builder.ToString();
+            catch (UriFormatException)
+            {
+                // host isn't a valid uri authority yet (e.g. mid-edit, contains a stray space);
+                // show a best-effort string instead of throwing on every keystroke
+                string portText = PortBox.Text;
+                return $"{scheme}://{host}{(string.IsNullOrEmpty(portText) ? "" : ":" + portText)}";
+            }
         }
     }
 }
