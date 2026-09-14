@@ -4,28 +4,24 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="420"
              x:Class="ImapCopy.ImapUrlField">
-    <StackPanel Spacing="4">
-        <Grid ColumnDefinitions="Auto,*">
-            <TextBlock Name="LabelText" Grid.Column="0" VerticalAlignment="Center" Width="90"/>
-            <TextBox Name="UrlBox" Grid.Column="1" Watermark="imap(s)://user:password@host[:port]/[folder]" TextChanged="UrlBox_TextChanged"/>
+    <Expander Margin="0,0,0,0" HorizontalAlignment="Stretch">
+        <Expander.Header>
+            <TextBox Name="UrlBox" Watermark="imap(s)://user:password@host[:port]/[folder]" TextChanged="UrlBox_TextChanged"/>
+        </Expander.Header>
+        <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="8,8,8,4">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="User:" VerticalAlignment="Center" Margin="0,0,8,6"/>
+            <TextBox Name="UserBox" Grid.Row="0" Grid.Column="1" Margin="0,0,16,6" TextChanged="TextField_Changed"/>
+
+            <TextBlock Grid.Row="0" Grid.Column="2" Text="Password:" VerticalAlignment="Center" Margin="0,0,8,6"/>
+            <TextBox Name="PasswordBox" Grid.Row="0" Grid.Column="3" PasswordChar="*" Margin="0,0,0,6" TextChanged="TextField_Changed"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Host:" VerticalAlignment="Center" Margin="0,0,8,6"/>
+            <TextBox Name="HostBox" Grid.Row="1" Grid.Column="1" Margin="0,0,16,6" TextChanged="TextField_Changed"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="2" Text="Port:" VerticalAlignment="Center" Margin="0,0,8,6"/>
+            <TextBox Name="PortBox" Grid.Row="1" Grid.Column="3" Watermark="default" Margin="0,0,0,6" TextChanged="TextField_Changed"/>
+
+            <CheckBox Name="SslCheckBox" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Content="Use SSL/TLS (imaps)" IsCheckedChanged="SslCheckBox_Changed"/>
         </Grid>
-
-        <Expander Header="Advanced" Margin="90,0,0,0">
-            <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="8,8,8,4">
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="User:" VerticalAlignment="Center" Margin="0,0,8,6"/>
-                <TextBox Name="UserBox" Grid.Row="0" Grid.Column="1" Margin="0,0,16,6" TextChanged="TextField_Changed"/>
-
-                <TextBlock Grid.Row="0" Grid.Column="2" Text="Password:" VerticalAlignment="Center" Margin="0,0,8,6"/>
-                <TextBox Name="PasswordBox" Grid.Row="0" Grid.Column="3" PasswordChar="*" Margin="0,0,0,6" TextChanged="TextField_Changed"/>
-
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Host:" VerticalAlignment="Center" Margin="0,0,8,6"/>
-                <TextBox Name="HostBox" Grid.Row="1" Grid.Column="1" Margin="0,0,16,6" TextChanged="TextField_Changed"/>
-
-                <TextBlock Grid.Row="1" Grid.Column="2" Text="Port:" VerticalAlignment="Center" Margin="0,0,8,6"/>
-                <TextBox Name="PortBox" Grid.Row="1" Grid.Column="3" Watermark="default" Margin="0,0,0,6" TextChanged="TextField_Changed"/>
-
-                <CheckBox Name="SslCheckBox" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Content="Use SSL/TLS (imaps)" IsCheckedChanged="SslCheckBox_Changed"/>
-            </Grid>
-        </Expander>
-    </StackPanel>
+    </Expander>
 </UserControl>

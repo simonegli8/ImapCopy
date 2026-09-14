@@ -4,9 +4,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="420"
              x:Class="ImapCopy.ArchiveFileField">
-    <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock Name="LabelText" Grid.Column="0" VerticalAlignment="Center" Width="90"/>
-        <TextBox Name="FileNameBox" Grid.Column="1" Watermark="path to backup .7z file" Margin="0,0,8,0"/>
-        <Button Name="BrowseButton" Grid.Column="2" Content="Browse..." Click="BrowseButton_Click"/>
+    <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Stretch">
+        <TextBox Name="FileNameBox" Grid.Column="0" Watermark="path to backup .7z file" Margin="0,0,8,0"/>
+        <Button Name="BrowseButton" Grid.Column="1" Content="Browse..." Click="BrowseButton_Click"/>
     </Grid>
 </UserControl>

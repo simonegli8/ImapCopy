@@ -17,12 +17,6 @@ namespace ImapCopy
             InitializeComponent();
         }
 
-        public string? Label
-        {
-            get => LabelText.Text;
-            set => LabelText.Text = value;
-        }
-
         public string? Url
         {
             get => UrlBox.Text;

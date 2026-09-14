@@ -1,4 +1,4 @@
-﻿#if PackAsTool
+﻿#if PackAsTool && NETCOREAPP
 using Avalonia;
 using System;
 using System.IO;
@@ -13,69 +13,80 @@ namespace ImapCopy
         // Initialization code. Don't use any Avalonia, third-party APIs or any
         // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
         // yet and stuff might break.
+        //
+        // Main must NOT return a Task (async or not): a Task-returning entry point breaks
+        // COM-dependent Windows features (drag&drop, file dialogs) even with [STAThread] set,
+        // causing "CoInitialize has not been called" (CO_E_NOTINITIALIZED) at runtime.
+        // See https://github.com/AvaloniaUI/Avalonia/issues/13694
         [STAThread]
-        public static async Task Main(string[] args)
+        public static void Main(string[] args)
+        {
+            if (GUIToolInstaller.Installer.Run(args, "ImapCopy", "sync-envelope",
+                   "ImapCopy, a tool to copy or backup IMAP mailboxes.")) return;
+            
+            if (args.Length > 0)
+                RunCli(args).GetAwaiter().GetResult();
+            else
+                BuildAvaloniaApp()
+                    .StartWithClassicDesktopLifetime(args);
+        }
+
+        private static async Task RunCli(string[] args)
         {
             var version = Assembly.GetExecutingAssembly().GetName().Version;
             var title = $"ImapCopy, v{version.ToString(3)}";
             Console.WriteLine(title);
 
-            if (args.Length > 0)
-            {
-                var op = args.FirstOrDefault().ToLower();
-                var src = args.Skip(1).FirstOrDefault();
-                var dest = args.Skip(2).FirstOrDefault();
-                if (src == null) Console.WriteLine("No source specified");
-                if (dest == null) Console.WriteLine("No destination specified");
-                var form = new ConsoleForm(@$"{title}
+            var op = args.FirstOrDefault().ToLower();
+            var src = args.Skip(1).FirstOrDefault();
+            var dest = args.Skip(2).FirstOrDefault();
+            if (src == null) Console.WriteLine("No source specified");
+            if (dest == null) Console.WriteLine("No destination specified");
+            var form = new ConsoleForm(@$"{title}
 
 Source: {src}
 Destination: {dest}
 
 Progress: [%Progress                                                 ]");
-                Action<double> report = (double progress) => ((PercentField)form["Progress"]).Value = (float)progress;
-                try
+            Action<double> report = (double progress) => ((PercentField)form["Progress"]).Value = (float)progress;
+            try
+            {
+                switch (op)
                 {
-                    switch (op)
-                    {
-                        case "copy":
-                            form.Show();
-                            await ImapCopier.Copy(new Uri(src), new Uri(dest), report);
-                            break;
-                        case "update":
-                            form.Show();
-                            await ImapCopier.Update(new Uri(src), new Uri(dest), report);
-                            break;
-                        case "backup":
-                            form.Show();
-                            using (var stream = new FileStream(dest, FileMode.Create, FileAccess.Write))
-                            {
-                                await ImapCopier.Backup(new Uri(src), stream, report);
-                            }
-                            break;
-                        case "restore":
-                            form.Show();
-                            using (var stream = new FileStream(src, FileMode.Open, FileAccess.Read))
-                            {
-                                await ImapCopier.Restore(stream, new Uri(dest), report);
-                            }
-                            break;
-                        default:
-                            Console.WriteLine(@"
+                    case "copy":
+                        form.Show();
+                        await ImapCopier.Copy(new Uri(src), new Uri(dest), report);
+                        break;
+                    case "update":
+                        form.Show();
+                        await ImapCopier.Update(new Uri(src), new Uri(dest), report);
+                        break;
+                    case "backup":
+                        form.Show();
+                        using (var stream = new FileStream(dest, FileMode.Create, FileAccess.Write))
+                        {
+                            await ImapCopier.Backup(new Uri(src), stream, report);
+                        }
+                        break;
+                    case "restore":
+                        form.Show();
+                        using (var stream = new FileStream(src, FileMode.Open, FileAccess.Read))
+                        {
+                            await ImapCopier.Restore(stream, new Uri(dest), report);
+                        }
+                        break;
+                    default:
+                        Console.WriteLine(@"
 usage: imapcopy <command> <source> <destination>
 
 where <command> is one of copy, update, backup, restore
 and <source> and <destination> are either an imap(s) url or a file path.");
-                            break;
-                    }
+                        break;
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.ToString());
-                }
-            } else {
-                BuildAvaloniaApp()
-                    .StartWithClassicDesktopLifetime(args);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
             }
         }
         // Avalonia configuration, don't remove; also used by visual designer.

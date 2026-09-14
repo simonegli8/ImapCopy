@@ -1,4 +1,5 @@
 #if PackAsTool
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -52,7 +53,7 @@ namespace ImapCopy
         private async void BackupSourceTestButton_Click(object? sender, RoutedEventArgs e) => await TestConnectionAsync(BackupSourceField);
 
         private async void RestoreDestTestButton_Click(object? sender, RoutedEventArgs e) => await TestConnectionAsync(RestoreDestField);
-
+        private async void Exit_Click(object? sender, RoutedEventArgs e) => Close();
         private Task TestConnectionAsync(ImapUrlField field) =>
             RunAsync(() => ImapCopier.TestConnection(ParseUri(field.Url, "URL")), "Connection successful.");
 

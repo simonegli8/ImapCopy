@@ -1,11 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <PackAsTool Condition="$(PackAsTool) == ''">true</PackAsTool>
+        <TargetFrameworks Condition="$(PackAsTool) == 'true'">net10.0</TargetFrameworks>
+        <TargetFrameworks Condition="$(PackAsTool) != 'true'">netstandard2.0</TargetFrameworks>
         <Nullable>enable</Nullable>
-        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <ApplicationManifest>GUI/app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 
-        <PackAsTool Condition="$(PackAsTool) == ''">true</PackAsTool>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
         <AssemblyTitle>ImapCopy</AssemblyTitle>
@@ -22,8 +23,8 @@
         <Description>A cross platform OpenSource GUI/CLI tool to copy or backup mailboxes via IMAP.</Description>
         <Copyright>Estrellas de Esperanza</Copyright>
         <PackageProjectUrl>https://github.com/simonegli8/SSL-Certificate-Maker</PackageProjectUrl>
-        <PackageReadmeFile Condition="$(PackAsTool) == 'true'">tools/$(TargetFramework)/any/README.md</PackageReadmeFile>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageReadmeFile Condition="$(PackAsTool) == 'true'">tools/net10.0/any/README.md</PackageReadmeFile>
+        <PackageReadmeFile Condition="$(PackAsTool) != 'true'">README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/simonegli8/SSL-Certificate-Maker</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageTags>IMAP Copy, IMAP Backup</PackageTags>
@@ -39,14 +40,12 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="$(PackAsTool) == 'true'">
-        <TargetFrameworks>net10.0</TargetFrameworks>
         <OutputType>Exe</OutputType>
         <DefineConstants>$(DefineConstants);PackAsTool</DefineConstants>
         <PackageId>ImapCopy</PackageId>
     </PropertyGroup>
 
     <PropertyGroup Condition="$(PackAsTool) != 'true'">
-        <TargetFrameworks>netstandard2.0</TargetFrameworks>
         <OutputType>Library</OutputType>
         <PackageId>ImapCopy.Library</PackageId>
     </PropertyGroup>
@@ -58,9 +57,12 @@
         <PackageReference Include="SharpCompress" Version="0.50.4" />
     </ItemGroup>
 
+    <ItemGroup Condition="$(TargetFramework) == 'netstandard2.0'">
+        <PackageReference Include="System.IO.Pipelines" Version="10.0.0" />
+    </ItemGroup>
     <!-- the Avalonia GUI (under GUI\) is only built for the dotnet-tool version of the project;
          the library-only build depends on nothing beyond what ImapCopier itself needs -->
-    <ItemGroup Condition="$(PackAsTool) == 'true'">
+    <ItemGroup Condition="$(TargetFramework) == 'net10.0' And $(PackAsTool) == 'true'">
         <PackageReference Include="Avalonia" Version="12.0.3" />
         <PackageReference Include="Avalonia.Desktop" Version="12.0.3" />
         <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.3" />
@@ -69,9 +71,10 @@
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="GUIToolInstaller" Version="1.0.18" />
     </ItemGroup>
 
-    <ItemGroup Condition="$(PackAsTool) != 'true'">
+    <ItemGroup Condition="$(TargetFramework) != 'net10.0' Or $(PackAsTool) != 'true'">
         <Compile Remove="GUI\**\*.cs" />
         <AvaloniaResource Remove="GUI\**\*.axaml" />
         <None Include="GUI\**\*.axaml" />
@@ -81,13 +84,18 @@
         <None Remove="nupkg\**\*.*" />
     </ItemGroup>
 
-    <ItemGroup Condition="$(PackAsTool) == 'true'">
+    <ItemGroup Condition="$(TargetFramework) != 'net10.0'  And $(PackAsTool) == 'true'">
       <None Remove="Resources\**\*.*" />
       <AvaloniaResource Include="Resources\**\*.*" />
     </ItemGroup>
 
     <ItemGroup>
       <Folder Include="Properties\" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <None Condition="$(PackAsTool) != 'true'" Include="README.md" Pack="true" PackagePath="" />
+        <None Condition="$(PackAsTool) == 'true'" Include="README.md" Pack="true" PackagePath="tools/net10.0/any" />
     </ItemGroup>
 
 </Project>

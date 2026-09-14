@@ -5,93 +5,107 @@
         xmlns:local="using:ImapCopy"
         mc:Ignorable="d" d:DesignWidth="640" d:DesignHeight="440"
         x:Class="ImapCopy.MainWindow"
-        Width="640" Height="440" MinWidth="520" MinHeight="380"
+        Width="700" Height="500" MinWidth="520" MinHeight="380"
         Icon="/Resources/sync-envelope.ico"
         Title="ImapCopy">
-    <Grid RowDefinitions="*,Auto" Margin="12">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid RowDefinitions="*,Auto" Margin="12">
 
-        <TabControl Grid.Row="0">
+            <TabControl Grid.Row="0">
 
-            <TabItem Header="Copy">
-                <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="8">
-                    <TextBlock Grid.Row="0" Text="Copies every message from the source mailbox to the destination mailbox." TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,12"/>
+                <TabItem Header="Copy">
+                    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" ColumnDefinitions="Auto,*,Auto" Margin="8">
+                        <TextBlock Grid.Row="0" Grid.ColumnSpan="3"
+                            Text="Copies every message from the source mailbox to the destination mailbox."
+                            TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,12" />
 
-                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-                        <local:ImapUrlField Name="CopySourceField" Grid.Column="0" Label="Source:" Margin="0,0,8,0"/>
-                        <Button Name="CopySourceTestButton" Grid.Column="1" Content="Test" Click="CopySourceTestButton_Click"/>
+                        <TextBlock Text="Source:" Margin="0,0,16,0" VerticalAlignment="Center" Grid.Row="1"/>
+                        <local:ImapUrlField Name="CopySourceField" Grid.Row="1" Grid.Column="1" Margin="0,0,8,0" />
+                        <Button Name="CopySourceTestButton" Grid.Row="1" Grid.Column="2" Content="Test"
+                            Click="CopySourceTestButton_Click"/>
+           
+                        <TextBlock Text="Destination:" Grid.Row="2" Margin="0,0,16,0" VerticalAlignment="Center" />
+                        <local:ImapUrlField Name="CopyDestField" Grid.Row="2" Grid.Column="1" Margin="0,0,8,0"/>
+                        <Button Name="CopyDestTestButton" Grid.Row="2" Grid.Column="2" Content="Test"
+                            Click="CopyDestTestButton_Click"/>
+                        
+                        <StackPanel Grid.Row="4" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Name="CopyStartButton" Content="Copy" Click="CopyButton_Click" Margin="5" />
+                            <Button Name="CopyExitButton" Content="Exit" Click="Exit_Click" Margin="5" />
+                        </StackPanel>
                     </Grid>
+                </TabItem>
 
-                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
-                        <local:ImapUrlField Name="CopyDestField" Grid.Column="0" Label="Destination:" Margin="0,0,8,0"/>
-                        <Button Name="CopyDestTestButton" Grid.Column="1" Content="Test" Click="CopyDestTestButton_Click"/>
+                <TabItem Header="Update">
+                    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" ColumnDefinitions="Auto,*,Auto" Margin="8">
+                        <TextBlock Grid.Row="0" Grid.ColumnSpan="3"
+                            Text="Like Copy, but also syncs flags and removes destination messages that no longer exist in the source."
+                            TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,12" />
+
+                        <TextBlock Text="Source:" Grid.Row="1" Margin="0,0,16,0" VerticalAlignment="Center" />
+                        <local:ImapUrlField Name="UpdateSourceField" Grid.Row="1" Grid.Column="1" Margin="0,0,8,0"/>
+                        <Button Name="UpdateSourceTestButton" Grid.Row="1" Grid.Column="2" Content="Test" Click="UpdateSourceTestButton_Click"/>
+
+                        <TextBlock Text="Destination:" Grid.Row="2" Margin="0,0,16,0" VerticalAlignment="Center" />
+                        <local:ImapUrlField Name="UpdateDestField" Grid.Row="2" Grid.Column="1" Margin="0,0,8,0"/>
+                        <Button Name="UpdateDestTestButton" Grid.Row="2" Grid.Column="2" Content="Test" Click="UpdateDestTestButton_Click"/>
+
+                        <StackPanel Grid.Row="4" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Name="UpdateStartButton" Content="Update" Click="UpdateButton_Click" Margin="5" />
+                            <Button Name="UpdateExitButton" Content="Exit" Click="Exit_Click" Margin="5" />
+                        </StackPanel>
                     </Grid>
+                </TabItem>
 
-                    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Name="CopyStartButton" Content="Copy" Click="CopyButton_Click"/>
-                    </StackPanel>
-                </Grid>
-            </TabItem>
+                <TabItem Header="Backup">
+                    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" ColumnDefinitions="Auto,*,Auto" Margin="8">
+                        <TextBlock Grid.Row="0" Grid.ColumnSpan="3"
+                            Text="Writes every message from the source mailbox into a .7z backup archive."
+                            TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,12"/>
 
-            <TabItem Header="Update">
-                <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="8">
-                    <TextBlock Grid.Row="0" Text="Like Copy, but also syncs flags and removes destination messages that no longer exist in the source." TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,12"/>
-
-                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-                        <local:ImapUrlField Name="UpdateSourceField" Grid.Column="0" Label="Source:" Margin="0,0,8,0"/>
-                        <Button Name="UpdateSourceTestButton" Grid.Column="1" Content="Test" Click="UpdateSourceTestButton_Click"/>
+                        <TextBlock Text="Source:" Margin="0,0,16,0" Grid.Row="1" VerticalAlignment="Center" />
+                        <local:ImapUrlField Name="BackupSourceField" Grid.Row="1" Grid.Column="1" Margin="0,0,8,8"/>
+                        <Button Name="BackupSourceTestButton" Grid.Row="1" Grid.Column="2" Content="Test" Click="BackupSourceTestButton_Click"/>
+                        
+                        <TextBlock Text="Backup file:" Grid.Row="2" Margin="0,0,16,0" VerticalAlignment="Center" />
+                        <local:ArchiveFileField Name="BackupFileField" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" MustExist="False"/>
+                        
+                        <StackPanel Grid.Row="4" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Name="BackupStartButton" Content="Backup" Click="BackupButton_Click" Margin="5" />
+                            <Button Name="BackupExitButton" Content="Exit" Click="Exit_Click" Margin="5" />
+                        </StackPanel>
                     </Grid>
+                </TabItem>
 
-                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
-                        <local:ImapUrlField Name="UpdateDestField" Grid.Column="0" Label="Destination:" Margin="0,0,8,0"/>
-                        <Button Name="UpdateDestTestButton" Grid.Column="1" Content="Test" Click="UpdateDestTestButton_Click"/>
+                <TabItem Header="Restore">
+                    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" ColumnDefinitions="Auto,*,Auto" Margin="8">
+                        <TextBlock Grid.Row="0" Grid.ColumnSpan="3"
+                            Text="Restores every message from a .7z backup archive into the destination mailbox."
+                            TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Backup file:" Grid.Row="1" Grid.Column="0" Margin="0,0,16,0" VerticalAlignment="Center" />
+                        <local:ArchiveFileField Name="RestoreFileField" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" MustExist="True" Margin="0,0,0,8"
+                            HorizontalAlignment="Stretch" />
+                        
+                        <TextBlock Text="Destination:" Grid.Row="2" Grid.Column="0" Margin="0,0,16,0" VerticalAlignment="Center" />
+                        <local:ImapUrlField Name="RestoreDestField" Grid.Row="2" Grid.Column="1" Margin="0,0,8,0" />
+                        <Button Name="RestoreDestTestButton" Grid.Row="2" Grid.Column="2" Content="Test"
+                            Click="RestoreDestTestButton_Click" />
+
+                        <StackPanel Grid.Row="4" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Name="RestoreStartButton" Content="Restore" Click="RestoreButton_Click" Margin="5" />
+                            <Button Name="RestoreExitButton" Content="Exit" Click="Exit_Click" Margin="5" />
+                        </StackPanel>
                     </Grid>
+                </TabItem>
 
-                    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Name="UpdateStartButton" Content="Update" Click="UpdateButton_Click"/>
-                    </StackPanel>
-                </Grid>
-            </TabItem>
+            </TabControl>
 
-            <TabItem Header="Backup">
-                <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="8">
-                    <TextBlock Grid.Row="0" Text="Writes every message from the source mailbox into a .7z backup archive." TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,12"/>
+            <StackPanel Grid.Row="1" Margin="0,12,0,0" Spacing="6">
+                <ProgressBar Name="ProgressBarControl" Minimum="0" Maximum="1" Height="16"/>
+                <TextBlock Name="StatusText" Text="Ready" TextWrapping="Wrap"/>
+            </StackPanel>
 
-                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-                        <local:ImapUrlField Name="BackupSourceField" Grid.Column="0" Label="Source:" Margin="0,0,8,0"/>
-                        <Button Name="BackupSourceTestButton" Grid.Column="1" Content="Test" Click="BackupSourceTestButton_Click"/>
-                    </Grid>
-
-                    <local:ArchiveFileField Name="BackupFileField" Grid.Row="2" Label="Backup file:" MustExist="False"/>
-
-                    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Name="BackupStartButton" Content="Backup" Click="BackupButton_Click"/>
-                    </StackPanel>
-                </Grid>
-            </TabItem>
-
-            <TabItem Header="Restore">
-                <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="8">
-                    <TextBlock Grid.Row="0" Text="Restores every message from a .7z backup archive into the destination mailbox." TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,12"/>
-
-                    <local:ArchiveFileField Name="RestoreFileField" Grid.Row="1" Label="Backup file:" MustExist="True" Margin="0,0,0,8"/>
-
-                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
-                        <local:ImapUrlField Name="RestoreDestField" Grid.Column="0" Label="Destination:" Margin="0,0,8,0"/>
-                        <Button Name="RestoreDestTestButton" Grid.Column="1" Content="Test" Click="RestoreDestTestButton_Click"/>
-                    </Grid>
-
-                    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Name="RestoreStartButton" Content="Restore" Click="RestoreButton_Click"/>
-                    </StackPanel>
-                </Grid>
-            </TabItem>
-
-        </TabControl>
-
-        <StackPanel Grid.Row="1" Margin="0,12,0,0" Spacing="6">
-            <ProgressBar Name="ProgressBarControl" Minimum="0" Maximum="1" Height="16"/>
-            <TextBlock Name="StatusText" Text="Ready" TextWrapping="Wrap"/>
-        </StackPanel>
-
-    </Grid>
+        </Grid>
+    </ScrollViewer>
 </Window>
