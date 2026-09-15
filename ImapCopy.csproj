@@ -33,7 +33,7 @@
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-        <ToolCommandName>sslcertmaker</ToolCommandName>
+        <ToolCommandName>imapcopy</ToolCommandName>
         <PackageOutputPath>nupkg</PackageOutputPath>
         <RestoreSources>$(RestoreSources);..\nupkg;https://api.nuget.org/v3/index.json</RestoreSources>
         <DebugType>portable</DebugType>
