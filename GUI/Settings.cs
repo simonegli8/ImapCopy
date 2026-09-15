@@ -8,27 +8,30 @@ using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace ImapCopy
+namespace ImapCopy;
+
+public enum Command { None, Copy, Update, Backup, Restore };
+public class Settings
 {
-    public enum Command { None, Copy, Update, Backup, Restore };
-    public class Settings
+    const string DefaultFileName = "imapcopy.settings.json";
+    public Command Command { get; set; }
+    public string? Source { get; set; }
+    public string? Destination { get; set; }
+
+    public void Save(string? filename = null)
     {
-        const string DefaultFileName = "imapcopy.settings.json";
-        public Command Command { get; set; }
-        public string? Source { get; set; }
-        public string? Destination { get; set; }
+        var json = JsonConvert.SerializeObject(this, new JsonSerializerSettings {
+            Converters = { new StringEnumConverter() }
+        });
+        File.WriteAllText(filename ?? DefaultFileName, json);
+    }
 
-        public void Save(string? filename = null)
+    public Settings Load(string? filename = null)
+    {
+        filename ??= DefaultFileName;
+        if (File.Exists(filename))
         {
-            var json = JsonConvert.SerializeObject(this, new JsonSerializerSettings {
-                Converters = { new StringEnumConverter() }
-            });
-            File.WriteAllText(filename ?? DefaultFileName, json);
-        }
-
-        public void Load(string? filename = null)
-        {
-            var json = File.ReadAllText(filename ?? DefaultFileName);
+            var json = File.ReadAllText(filename);
             var settings = JsonConvert.DeserializeObject<Settings>(json, new JsonSerializerSettings
             {
                 Converters = { new StringEnumConverter() }
@@ -37,6 +40,7 @@ namespace ImapCopy
             Source = settings?.Source;
             Destination = settings?.Destination;
         }
+        return this;
     }
 }
 #endif

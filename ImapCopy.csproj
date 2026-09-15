@@ -5,6 +5,7 @@
         <TargetFrameworks Condition="$(PackAsTool) != 'true'">netstandard2.0</TargetFrameworks>
         <Nullable>enable</Nullable>
         <ApplicationManifest>GUI/app.manifest</ApplicationManifest>
+        <ApplicationIcon>Resources\sync-envelope.ico</ApplicationIcon>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>

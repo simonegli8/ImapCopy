@@ -16,6 +16,50 @@ namespace ImapCopy
         public MainWindow()
         {
             InitializeComponent();
+
+            WindowStartupLocation = WindowStartupLocation.CenterScreen;
+
+            var settings = new Settings().Load();
+            switch (settings.Command)
+            {
+                default:
+                case Command.Copy:
+                    tab.SelectedIndex = 0;
+                    CopySourceField.Url = settings.Source;
+                    CopyDestField.Url = settings.Destination;
+                    UpdateSourceField.Url = settings.Source;
+                    UpdateDestField.Url = settings.Destination;
+                    BackupSourceField.Url = settings.Source;
+                    RestoreDestField.Url = settings.Destination;
+                    break;
+                case Command.Update:
+                    tab.SelectedIndex = 1;
+                    CopySourceField.Url = settings.Source;
+                    CopyDestField.Url = settings.Destination;
+                    UpdateSourceField.Url = settings.Source;
+                    UpdateDestField.Url = settings.Destination;
+                    BackupSourceField.Url = settings.Source;
+                    RestoreDestField.Url = settings.Destination;
+                    break;
+                case Command.Backup:
+                    tab.SelectedIndex = 2;
+                    CopySourceField.Url = settings.Source;
+                    UpdateSourceField.Url = settings.Source;
+                    BackupSourceField.Url = settings.Source;
+                    BackupFileField.FileName = settings.Destination;
+                    RestoreFileField.FileName = settings.Destination;
+                    RestoreDestField.Url = settings.Source;
+                    break;
+                case Command.Restore:
+                    tab.SelectedIndex = 3;
+                    CopyDestField.Url = settings.Destination;
+                    UpdateDestField.Url = settings.Destination;
+                    BackupSourceField.Url = settings.Destination;
+                    BackupFileField.FileName = settings.Source;
+                    RestoreFileField.FileName = settings.Source;
+                    RestoreDestField.Url = settings.Destination;
+                    break;
+            }
         }
 
         private async void CopyButton_Click(object? sender, RoutedEventArgs e) => await RunAsync(() =>
@@ -65,6 +109,35 @@ namespace ImapCopy
                 return;
 
             busy = true;
+            var settings = new Settings();
+            switch (tab.SelectedIndex) {
+                case 0:
+                    settings.Command = Command.Copy;
+                    settings.Source = CopySourceField.Url;
+                    settings.Destination = CopyDestField.Url;
+                    break;
+                case 1:
+                    settings.Command = Command.Update;
+                    settings.Source = UpdateSourceField.Url;
+                    settings.Destination = UpdateDestField.Url;
+                    break;
+                case 2:
+                    settings.Command = Command.Backup;
+                    settings.Source = BackupSourceField.Url;
+                    settings.Destination = BackupFileField.FileName;
+                    break;
+                case 3:
+                    settings.Command = Command.Restore;
+                    settings.Source = RestoreFileField.FileName;
+                    settings.Destination = RestoreDestField.Url;
+                    break;
+                default:
+                    settings.Command = Command.None;
+                    settings.Source = settings.Destination = null;
+                    break;
+            };
+            settings.Save();
+
             SetControlsEnabled(false);
             ProgressBarControl.Value = 0;
             StatusText.Text = "Working...";

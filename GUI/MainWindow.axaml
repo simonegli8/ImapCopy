@@ -6,12 +6,11 @@
         mc:Ignorable="d" d:DesignWidth="640" d:DesignHeight="440"
         x:Class="ImapCopy.MainWindow"
         Width="700" Height="500" MinWidth="520" MinHeight="380"
-        Icon="/Resources/sync-envelope.ico"
         Title="ImapCopy">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid RowDefinitions="*,Auto" Margin="12">
 
-            <TabControl Grid.Row="0">
+            <TabControl Name="tab" Grid.Row="0">
 
                 <TabItem Header="Copy">
                     <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" ColumnDefinitions="Auto,*,Auto" Margin="8">
