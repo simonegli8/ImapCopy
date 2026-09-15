@@ -205,6 +205,15 @@ public class ImapCopier
         await destination.FlushAsync().ConfigureAwait(false);
     }
 
+    // writes every message under the source mailbox (or a single folder/subtree, if a path is given in the uri)
+    // as a .eml entry in a 7z archive, one top-level directory per mailbox folder; destination is the path to
+    // a 7zip archive
+    public static async Task Backup(Uri source, string destination, Action<double>? progress = null)
+    {
+        using var file = new FileStream(destination, FileMode.Create, FileAccess.Write);
+        await Backup(source, file, progress);
+    }
+
     // restores a 7z archive produced by Backup; existing messages (matched by Message-Id) are skipped,
     // so restoring the same archive twice does not create duplicates. source is left open
     public static async Task Restore(Stream source, Uri destination, Action<double>? progress = null)
@@ -306,6 +315,14 @@ public class ImapCopier
             if (destinationClient.IsConnected)
                 await destinationClient.DisconnectAsync(true).ConfigureAwait(false);
         }
+    }
+    // restores a 7z archive produced by Backup; existing messages (matched by Message-Id) are skipped,
+    // so restoring the same archive twice does not create duplicates. source is the path to
+    // a 7zip archive
+    public static async Task Restore(string source, Uri destination, Action<double>? progress = null)
+    {
+        using var file = new FileStream(source, FileMode.Open, FileAccess.Read);
+        await Restore(file, destination, progress);
     }
 
     private static async Task<(IMailFolder? rootFolder, List<IMailFolder> folders)> ResolveFoldersAsync(ImapClient client, string path)
