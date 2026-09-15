@@ -34,14 +34,22 @@ namespace ImapCopy
         private static async Task RunCli(string[] args)
         {
             var version = Assembly.GetExecutingAssembly().GetName().Version;
-            var title = $"ImapCopy, v{version.ToString(3)}";
+            var title = $"ImapCopy, v{version!.ToString(3)}";
             Console.WriteLine(title);
 
-            var op = args.FirstOrDefault().ToLower();
-            var src = args.Skip(1).FirstOrDefault();
-            var dest = args.Skip(2).FirstOrDefault();
-            if (src == null) Console.WriteLine("No source specified");
-            if (dest == null) Console.WriteLine("No destination specified");
+            var op = args?.FirstOrDefault()?.ToLower();
+            var src = args?.Skip(1).FirstOrDefault();
+            var dest = args?.Skip(2).FirstOrDefault();
+            if (src == null)
+            {
+                Console.WriteLine("No source specified");
+                Environment.Exit(-1);
+            }
+            if (dest == null)
+            {
+                Console.WriteLine("No destination specified");
+                Environment.Exit(-2);
+            }
             var form = new ConsoleForm(@$"{title}
 
 Source: {src}

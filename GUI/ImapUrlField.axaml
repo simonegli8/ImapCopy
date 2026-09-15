@@ -6,7 +6,7 @@
              x:Class="ImapCopy.ImapUrlField">
     <Expander Margin="0,0,0,0" HorizontalAlignment="Stretch">
         <Expander.Header>
-            <TextBox Name="UrlBox" Watermark="imap(s)://user:password@host[:port]/[folder]" TextChanged="UrlBox_TextChanged"/>
+            <TextBox Name="UrlBox" PlaceholderText="imap(s)://user:password@host[:port]/[folder]" TextChanged="UrlBox_TextChanged"/>
         </Expander.Header>
         <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="8,8,8,4">
             <TextBlock Grid.Row="0" Grid.Column="0" Text="User:" VerticalAlignment="Center" Margin="0,0,8,6"/>
@@ -19,7 +19,7 @@
             <TextBox Name="HostBox" Grid.Row="1" Grid.Column="1" Margin="0,0,16,6" TextChanged="TextField_Changed"/>
 
             <TextBlock Grid.Row="1" Grid.Column="2" Text="Port:" VerticalAlignment="Center" Margin="0,0,8,6"/>
-            <TextBox Name="PortBox" Grid.Row="1" Grid.Column="3" Watermark="default" Margin="0,0,0,6" TextChanged="TextField_Changed"/>
+            <TextBox Name="PortBox" Grid.Row="1" Grid.Column="3" PlaceholderText="default" Margin="0,0,0,6" TextChanged="TextField_Changed"/>
 
             <CheckBox Name="SslCheckBox" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Content="Use SSL/TLS (imaps)" IsCheckedChanged="SslCheckBox_Changed"/>
         </Grid>

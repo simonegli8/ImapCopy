@@ -61,7 +61,7 @@ public class ConsoleSettings
 
 public class ConsoleField
 {
-	public string Name = null;
+	public string? Name = null;
 	public int X { get; set; }
 	public int Y { get; set; }
 	public int Width { get; set; }

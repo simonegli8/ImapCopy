@@ -5,7 +5,7 @@
              mc:Ignorable="d" d:DesignWidth="420"
              x:Class="ImapCopy.ArchiveFileField">
     <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Stretch">
-        <TextBox Name="FileNameBox" Grid.Column="0" Watermark="path to backup .7z file" Margin="0,0,8,0"/>
+        <TextBox Name="FileNameBox" Grid.Column="0" PlaceholderText="path to backup .7z file" Margin="0,0,8,0"/>
         <Button Name="BrowseButton" Grid.Column="1" Content="Browse..." Click="BrowseButton_Click"/>
     </Grid>
 </UserControl>

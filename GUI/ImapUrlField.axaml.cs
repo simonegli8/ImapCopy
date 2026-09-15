@@ -114,7 +114,7 @@ namespace ImapCopy
             {
                 // host isn't a valid uri authority yet (e.g. mid-edit, contains a stray space);
                 // show a best-effort string instead of throwing on every keystroke
-                string portText = PortBox.Text;
+                string? portText = PortBox.Text;
                 return $"{scheme}://{host}{(string.IsNullOrEmpty(portText) ? "" : ":" + portText)}";
             }
         }

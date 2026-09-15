@@ -23,11 +23,11 @@ public class ImapCopier
 {
     // uri format: imap(s)://user:password@host:port/optional/folder/path
     // progress is invoked with the fraction (0.0-1.0) of messages processed across all copied folders
-    public static Task Copy(Uri source, Uri destination, Action<double> progress = null) => CopyMailboxAsync(source, destination, false, progress);
+    public static Task Copy(Uri source, Uri destination, Action<double>? progress = null) => CopyMailboxAsync(source, destination, false, progress);
 
     // like Copy, but also syncs flags (\Seen, \Flagged, ...) of messages that already exist at the destination,
     // and deletes destination messages (matched by Message-Id) that no longer exist in the source folder
-    public static Task Update(Uri source, Uri destination, Action<double> progress = null) => CopyMailboxAsync(source, destination, true, progress);
+    public static Task Update(Uri source, Uri destination, Action<double>? progress = null) => CopyMailboxAsync(source, destination, true, progress);
 
     // checks that a uri is a well-formed imap(s) url, connects to the host and authenticates with
     // the credentials in the url, then disconnects; throws (ArgumentException, MailKit's
@@ -41,7 +41,7 @@ public class ImapCopier
             !string.Equals(uri.Scheme, "imaps", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException($"'{uri.Scheme}' is not a valid imap(s) url scheme.", nameof(uri));
 
-        (string username, _) = ParseCredentials(uri);
+        (string? username, _) = ParseCredentials(uri);
         if (string.IsNullOrEmpty(username))
             throw new ArgumentException("The url must include a username and password to test authentication.", nameof(uri));
 
@@ -53,7 +53,7 @@ public class ImapCopier
 
     // builds an imap(s) url from its parts; port <= 0 omits the port (the default for the scheme is
     // used when connecting), and user/password may be null for an anonymous connection
-    public static Uri ImapUrl(string host, int port, bool ssl, string user = null, string password = null)
+    public static Uri ImapUrl(string host, int port, bool ssl, string? user = null, string? password = null)
     {
         if (string.IsNullOrWhiteSpace(host))
             throw new ArgumentException("Host is required.", nameof(host));
@@ -82,7 +82,7 @@ public class ImapCopier
     // writes every message under the source mailbox (or a single folder/subtree, if a path is given in the uri)
     // as a .eml entry in a 7z archive, one top-level directory per mailbox folder; destination is left open
     // (must be a seekable stream: 7z back-patches its header once the archive is finalized)
-    public static async Task Backup(Uri source, Stream destination, Action<double> progress = null)
+    public static async Task Backup(Uri source, Stream destination, Action<double>? progress = null)
     {
         if (destination == null)
             throw new ArgumentNullException(nameof(destination));
@@ -94,7 +94,7 @@ public class ImapCopier
         {
             string sourcePath = GetFolderPath(source);
 
-            (IMailFolder rootFolder, List<IMailFolder> folders) =
+            (IMailFolder? rootFolder, List<IMailFolder> folders) =
                 await ResolveFoldersAsync(sourceClient, sourcePath).ConfigureAwait(false);
 
             int totalMessages = progress != null ? await CountMessagesAsync(folders).ConfigureAwait(false) : 0;
@@ -150,7 +150,7 @@ public class ImapCopier
 
                             Task writeTask = Task.Run(async () =>
                             {
-                                Exception writeError = null;
+                                Exception? writeError = null;
 
                                 try
                                 {
@@ -171,9 +171,9 @@ public class ImapCopier
 
                             await writeTask.ConfigureAwait(false);
 
-                            IMessageSummary summary = summaryByUid.TryGetValue(uid, out IMessageSummary s) ? s : null;
+                            IMessageSummary? summary = summaryByUid.TryGetValue(uid, out IMessageSummary? s) ? s : null;
                             MessageFlags flags = (summary?.Flags ?? MessageFlags.None) & ~MessageFlags.Recent;
-                            flagsByEntryName[entryName] = ToFlagStrings(flags, summary?.Keywords);
+                            flagsByEntryName[entryName] = ToFlagStrings(flags, summary?.Keywords!);
 
                             if (totalMessages > 0)
                                 progress?.Invoke((double)++processedMessages / totalMessages);
@@ -207,7 +207,7 @@ public class ImapCopier
 
     // restores a 7z archive produced by Backup; existing messages (matched by Message-Id) are skipped,
     // so restoring the same archive twice does not create duplicates. source is left open
-    public static async Task Restore(Stream source, Uri destination, Action<double> progress = null)
+    public static async Task Restore(Stream source, Uri destination, Action<double>? progress = null)
     {
         if (source == null)
             throw new ArgumentNullException(nameof(source));
@@ -227,13 +227,13 @@ public class ImapCopier
 
             // each folder's flags.json sidecar is metadata, not a message, so it is tracked separately
             Dictionary<string, IArchiveEntry> flagsEntryByFolder = allEntries
-                .Where(e => string.Equals(Path.GetFileName(e.Key), "flags.json", StringComparison.OrdinalIgnoreCase))
-                .ToDictionary(e => e.Key.Substring(0, e.Key.LastIndexOf('/')), e => e);
+                .Where(e => e.Key != null && string.Equals(Path.GetFileName(e.Key), "flags.json", StringComparison.OrdinalIgnoreCase))
+                .ToDictionary(e => e.Key!.Substring(0, e.Key.LastIndexOf('/')), e => e);
 
             // group the flat list of "<folder path>/<entry name>.eml" entries by their folder path
             List<IGrouping<string, IArchiveEntry>> entriesByFolder = allEntries
-                .Where(e => !string.Equals(Path.GetFileName(e.Key), "flags.json", StringComparison.OrdinalIgnoreCase))
-                .GroupBy(e => e.Key.Substring(0, e.Key.LastIndexOf('/')))
+                .Where(e => e.Key != null && !string.Equals(Path.GetFileName(e.Key), "flags.json", StringComparison.OrdinalIgnoreCase))
+                .GroupBy(e => e.Key!.Substring(0, e.Key.LastIndexOf('/')))
                 .ToList();
 
             int totalMessages = progress != null ? entriesByFolder.Sum(g => g.Count()) : 0;
@@ -245,7 +245,8 @@ public class ImapCopier
                     ? group.Key
                     : destinationBasePath + "/" + group.Key;
 
-                IMailFolder folder = await GetOrCreateFolderAsync(destinationClient, destinationPath).ConfigureAwait(false);
+                IMailFolder? folder = await GetOrCreateFolderAsync(destinationClient, destinationPath).ConfigureAwait(false);
+                if (folder == null) throw new Exception($"Could not create IMAP folder {destinationPath}");
                 await folder.OpenAsync(FolderAccess.ReadWrite).ConfigureAwait(false);
 
                 try
@@ -261,13 +262,13 @@ public class ImapCopier
 
                         foreach (IMessageSummary summary in existingSummaries)
                         {
-                            string messageId = summary.Envelope?.MessageId;
+                            string? messageId = summary.Envelope?.MessageId;
                             if (!string.IsNullOrEmpty(messageId))
                                 existingByMessageId[messageId] = summary.UniqueId;
                         }
                     }
 
-                    Dictionary<string, string[]> flagsByEntryName = flagsEntryByFolder.TryGetValue(group.Key, out IArchiveEntry flagsEntry)
+                    Dictionary<string, string[]> flagsByEntryName = flagsEntryByFolder.TryGetValue(group.Key, out IArchiveEntry? flagsEntry)
                         ? await LoadFlagsAsync(flagsEntry).ConfigureAwait(false)
                         : new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
 
@@ -279,8 +280,8 @@ public class ImapCopier
 
                         if (string.IsNullOrEmpty(message.MessageId) || !existingByMessageId.ContainsKey(message.MessageId))
                         {
-                            string entryName = Path.GetFileNameWithoutExtension(entry.Key);
-                            string[] rawFlags = flagsByEntryName.TryGetValue(entryName, out string[] f) ? f : null;
+                            string entryName = Path.GetFileNameWithoutExtension(entry.Key ?? "");
+                            string[]? rawFlags = flagsByEntryName.TryGetValue(entryName, out string[]? f) ? f : null;
                             (MessageFlags flags, HashSet<string> keywords) = ParseFlagStrings(rawFlags);
 
                             IAppendRequest request = new AppendRequest(message, flags, keywords, message.Date);
@@ -307,11 +308,11 @@ public class ImapCopier
         }
     }
 
-    private static async Task<(IMailFolder rootFolder, List<IMailFolder> folders)> ResolveFoldersAsync(ImapClient client, string path)
+    private static async Task<(IMailFolder? rootFolder, List<IMailFolder> folders)> ResolveFoldersAsync(ImapClient client, string path)
     {
-        IList<IMailFolder> allFolders = await client.GetFoldersAsync(client.PersonalNamespaces.FirstOrDefault()).ConfigureAwait(false);
+        IList<IMailFolder> allFolders = await client.GetFoldersAsync(client.PersonalNamespaces[0]).ConfigureAwait(false);
 
-        IMailFolder rootFolder = null;
+        IMailFolder? rootFolder = null;
         IEnumerable<IMailFolder> candidates = allFolders;
 
         if (!string.IsNullOrEmpty(path))
@@ -352,7 +353,7 @@ public class ImapCopier
         return values.ToArray();
     }
 
-    private static (MessageFlags flags, HashSet<string> keywords) ParseFlagStrings(IEnumerable<string> values)
+    private static (MessageFlags flags, HashSet<string> keywords) ParseFlagStrings(IEnumerable<string>? values)
     {
         MessageFlags flags = MessageFlags.None;
         HashSet<string> keywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -390,7 +391,7 @@ public class ImapCopier
         using (StreamReader reader = new StreamReader(stream))
             json = await reader.ReadToEndAsync().ConfigureAwait(false);
 
-        Dictionary<string, string[]> raw = JsonConvert.DeserializeObject<Dictionary<string, string[]>>(json);
+        Dictionary<string, string[]>? raw = JsonConvert.DeserializeObject<Dictionary<string, string[]>>(json);
         return raw != null
             ? new Dictionary<string, string[]>(raw, StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
@@ -409,7 +410,7 @@ public class ImapCopier
         return total;
     }
 
-    private static async Task CopyMailboxAsync(Uri source, Uri destination, bool update, Action<double> progress = null)
+    private static async Task CopyMailboxAsync(Uri source, Uri destination, bool update, Action<double>? progress = null)
     {
         using ImapClient sourceClient = new ImapClient();
         using ImapClient destinationClient = new ImapClient();
@@ -422,12 +423,12 @@ public class ImapCopier
             string sourcePath = GetFolderPath(source);
             string destinationBasePath = GetFolderPath(destination);
 
-            (IMailFolder rootFolder, List<IMailFolder> foldersToCopy) =
+            (IMailFolder? rootFolder, List<IMailFolder> foldersToCopy) =
                 await ResolveFoldersAsync(sourceClient, sourcePath).ConfigureAwait(false);
 
             // pre-count messages (via STATUS, without opening each folder) so progress can be reported as a fraction
             int totalMessages = progress != null ? await CountMessagesAsync(foldersToCopy).ConfigureAwait(false) : 0;
-            Action onMessageProcessed = null;
+            Action? onMessageProcessed = null;
 
             if (progress != null && totalMessages > 0)
             {
@@ -440,8 +441,9 @@ public class ImapCopier
                 string relativePath = GetRelativeFolderPath(sourceFolder, rootFolder);
                 string destinationPath = CombineFolderPath(destinationBasePath, relativePath, sourceFolder.Name);
 
-                IMailFolder destinationFolder = await GetOrCreateFolderAsync(destinationClient, destinationPath)
+                IMailFolder? destinationFolder = await GetOrCreateFolderAsync(destinationClient, destinationPath)
                     .ConfigureAwait(false);
+                if (destinationFolder == null) throw new Exception($"Could not create IMAP folder {destinationPath}");
 
                 await CopyFolderAsync(sourceFolder, destinationFolder, update, onMessageProcessed).ConfigureAwait(false);
             }
@@ -458,7 +460,7 @@ public class ImapCopier
         }
     }
 
-    private static async Task CopyFolderAsync(IMailFolder sourceFolder, IMailFolder destinationFolder, bool update, Action onMessageProcessed = null)
+    private static async Task CopyFolderAsync(IMailFolder sourceFolder, IMailFolder destinationFolder, bool update, Action? onMessageProcessed = null)
     {
         await sourceFolder.OpenAsync(FolderAccess.ReadOnly).ConfigureAwait(false);
         await destinationFolder.OpenAsync(FolderAccess.ReadWrite).ConfigureAwait(false);
@@ -476,7 +478,7 @@ public class ImapCopier
 
                 foreach (IMessageSummary summary in destinationSummaries)
                 {
-                    string messageId = summary.Envelope?.MessageId;
+                    string? messageId = summary.Envelope?.MessageId;
                     if (!string.IsNullOrEmpty(messageId))
                         existingByMessageId[messageId] = summary.UniqueId;
                 }
@@ -493,7 +495,7 @@ public class ImapCopier
 
                 foreach (IMessageSummary summary in sourceSummaries)
                 {
-                    string messageId = summary.Envelope?.MessageId;
+                    string? messageId = summary.Envelope?.MessageId;
                     if (!string.IsNullOrEmpty(messageId))
                         sourceMessageIds.Add(messageId);
 
@@ -513,7 +515,7 @@ public class ImapCopier
                     }
 
                     MimeMessage message = await sourceFolder.GetMessageAsync(summary.UniqueId).ConfigureAwait(false);
-                    IAppendRequest request = new AppendRequest(message, flags, summary.Keywords, summary.InternalDate ?? DateTimeOffset.Now);
+                    IAppendRequest request = new AppendRequest(message, flags, summary.Keywords!, summary.InternalDate ?? DateTimeOffset.Now);
                     await destinationFolder.AppendAsync(request).ConfigureAwait(false);
 
                     onMessageProcessed?.Invoke();
@@ -554,12 +556,12 @@ public class ImapCopier
 
         await client.ConnectAsync(uri.Host, port, sslOptions).ConfigureAwait(false);
 
-        (string username, string password) = ParseCredentials(uri);
-        if (!string.IsNullOrEmpty(username))
+        (string? username, string? password) = ParseCredentials(uri);
+        if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
             await client.AuthenticateAsync(username, password).ConfigureAwait(false);
     }
 
-    private static (string username, string password) ParseCredentials(Uri uri)
+    private static (string? username, string? password) ParseCredentials(Uri uri)
     {
         string userInfo = uri.UserInfo;
         if (string.IsNullOrEmpty(userInfo))
@@ -580,7 +582,7 @@ public class ImapCopier
 
     // folder paths are compared/combined using '/' as a generic separator; MailKit maps '/' to
     // whatever separator each server actually uses when resolving a path via GetFolder(Async)
-    private static string GetRelativeFolderPath(IMailFolder folder, IMailFolder root)
+    private static string GetRelativeFolderPath(IMailFolder folder, IMailFolder? root)
     {
         if (root == null)
             return NormalizeSeparator(folder.FullName, folder.DirectorySeparator);
@@ -605,7 +607,7 @@ public class ImapCopier
         return string.IsNullOrEmpty(basePath) ? relativePath : basePath + "/" + relativePath;
     }
 
-    private static async Task<IMailFolder> GetOrCreateFolderAsync(ImapClient client, string path)
+    private static async Task<IMailFolder?> GetOrCreateFolderAsync(ImapClient client, string path)
     {
         try
         {
@@ -618,8 +620,8 @@ public class ImapCopier
 
         string[] segments = path.Split('/');
         IMailFolder parent = client.GetFolder(client.PersonalNamespaces[0]);
-        IMailFolder folder = null;
-        string currentPath = null;
+        IMailFolder? folder = null;
+        string? currentPath = null;
 
         foreach (string segment in segments)
         {
@@ -633,6 +635,8 @@ public class ImapCopier
             {
                 folder = await parent.CreateAsync(segment, true).ConfigureAwait(false);
             }
+
+            if (folder == null) break;
 
             parent = folder;
         }
