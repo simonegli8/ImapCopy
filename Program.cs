@@ -85,10 +85,13 @@ Progress: [%Progress                                                 ]");
                         break;
                     default:
                         Console.WriteLine(@"
-usage: imapcopy <command> <source> <destination>
+Usage: imapcopy <command> [source] [destination]
 
-where <command> is one of copy, update, backup, restore
-and <source> and <destination> are either an imap(s) url or a file path.");
+<command> is one of copy, update, backup, restore, install, uninstall
+and [source] and [destination] are either an imap(s) url or a file path.
+
+The commands install and uninstall will install/uninstall the app from the
+system program menu.");
                         break;
                 }
             }
