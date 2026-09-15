@@ -348,6 +348,9 @@ public class ImapCopier
         return (rootFolder, folders);
     }
 
+    // flags that are OR'd with the destination's existing value during Update rather than overwritten
+    private const MessageFlags OrMergedFlags = MessageFlags.Seen | MessageFlags.Answered | MessageFlags.Flagged | MessageFlags.Deleted | MessageFlags.Draft;
+
     // the flags a backup round-trips; \Recent is excluded since it cannot be set through STORE/APPEND
     private static readonly (MessageFlags Flag, string Name)[] KnownFlags =
     {
@@ -486,18 +489,25 @@ public class ImapCopier
         {
             // messages are matched across the two servers by Message-Id, since UIDs are server-specific
             Dictionary<string, UniqueId> existingByMessageId = new Dictionary<string, UniqueId>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, MessageFlags> existingFlagsByMessageId = new Dictionary<string, MessageFlags>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, HashSet<string>> existingKeywordsByMessageId = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
 
             if (destinationFolder.Count > 0)
             {
                 IList<UniqueId> destinationUids = await destinationFolder.SearchAsync(SearchQuery.All).ConfigureAwait(false);
                 IList<IMessageSummary> destinationSummaries = await destinationFolder.FetchAsync(
-                    destinationUids, MessageSummaryItems.Envelope).ConfigureAwait(false);
+                    destinationUids, MessageSummaryItems.Envelope | MessageSummaryItems.Flags).ConfigureAwait(false);
 
                 foreach (IMessageSummary summary in destinationSummaries)
                 {
                     string? messageId = summary.Envelope?.MessageId;
                     if (!string.IsNullOrEmpty(messageId))
+                    {
                         existingByMessageId[messageId] = summary.UniqueId;
+                        existingFlagsByMessageId[messageId] = summary.Flags ?? MessageFlags.None;
+                        existingKeywordsByMessageId[messageId] = new HashSet<string>(
+                            summary.Keywords ?? (IEnumerable<string>)Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+                    }
                 }
             }
 
@@ -523,8 +533,19 @@ public class ImapCopier
                     {
                         if (update)
                         {
-                            HashSet<string> keywords = new HashSet<string>(summary.Keywords ?? (IEnumerable<string>)Array.Empty<string>());
-                            await destinationFolder.SetFlagsAsync(destinationUid, flags, keywords, true).ConfigureAwait(false);
+                            // \Seen, \Answered, \Flagged and \Deleted are OR'd with the destination's current
+                            // value rather than overwritten, so actions already taken at the destination aren't undone
+                            MessageFlags destinationFlags = existingFlagsByMessageId.TryGetValue(messageId, out MessageFlags df)
+                                ? df : MessageFlags.None;
+                            MessageFlags mergedFlags = flags | (destinationFlags & OrMergedFlags);
+
+                            // keywords (custom flags / Gmail labels) are unioned rather than overwritten, for the same reason
+                            HashSet<string> keywords = new HashSet<string>(
+                                summary.Keywords ?? (IEnumerable<string>)Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+                            if (existingKeywordsByMessageId.TryGetValue(messageId, out HashSet<string>? destinationKeywords))
+                                keywords.UnionWith(destinationKeywords);
+
+                            await destinationFolder.SetFlagsAsync(destinationUid, mergedFlags, keywords, true).ConfigureAwait(false);
                         }
 
                         onMessageProcessed?.Invoke();
