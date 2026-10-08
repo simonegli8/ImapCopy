@@ -1,4 +1,4 @@
-SET PackageVersion=1.2.0
+SET PackageVersion=2.0.0
 SET Configuration=Release
 
 del nupkg\ImapCopy*.nupkg

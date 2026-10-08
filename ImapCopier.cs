@@ -110,51 +110,60 @@ public class ImapCopier
                             continue;
 
                         IList<UniqueId> uids = await folder.SearchAsync(SearchQuery.All).ConfigureAwait(false);
-                        IList<IMessageSummary> summaries = await folder.FetchAsync(uids, MessageSummaryItems.Flags).ConfigureAwait(false);
-                        Dictionary<UniqueId, IMessageSummary> summaryByUid = summaries.ToDictionary(s => s.UniqueId);
+                        IList<IMessageSummary> summaries = await folder.FetchAsync(
+                            uids, MessageSummaryItems.Flags | MessageSummaryItems.Envelope).ConfigureAwait(false);
 
+                        // entry names are derived from the envelope (rather than the downloaded message) so they, and
+                        // with them flags.json, are known before any message body is fetched
                         HashSet<string> usedEntryNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                         Dictionary<string, string[]> flagsByEntryName = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+                        List<(UniqueId Uid, string EntryName, DateTime Date)> messages = new List<(UniqueId, string, DateTime)>();
 
-                        foreach (UniqueId uid in uids)
+                        foreach (IMessageSummary summary in summaries)
                         {
-                            MimeMessage message = await folder.GetMessageAsync(uid).ConfigureAwait(false);
-
                             // Uri.EscapeDataString both makes the name filesystem-safe (it percent-encodes
                             // '/', ':', control characters, ...) and leaves '.', '-', '_', '~' untouched, so
                             // the date/sender/subject parts stay readable in the resulting entry name
-                            string dateTime = message.Date.UtcDateTime.ToString("yyyy-MM-dd__HHmmss");
-                            string sender = message.From.Mailboxes.FirstOrDefault()?.Name ?? message.Sender?.Name ?? "unknown";
-                            string subject = message.Subject ?? string.Empty;
+                            DateTime date = (summary.Envelope?.Date ?? DateTimeOffset.MinValue).UtcDateTime;
+                            string dateTime = date.ToString("yyyy-MM-dd__HHmmss");
+                            string sender = summary.Envelope?.From.Mailboxes.FirstOrDefault()?.Name
+                                ?? summary.Envelope?.Sender.Mailboxes.FirstOrDefault()?.Name ?? "unknown";
+                            string subject = summary.Envelope?.Subject ?? string.Empty;
 
                             string entryName = Uri.EscapeDataString($"{dateTime}__{sender.Replace(' ', '-')}__{subject.Replace(' ', '-')}")
                                 .Replace("__"," ");
 
                             // disambiguate the (rare) case of two messages with the same date, sender and subject
                             if (!usedEntryNames.Add(entryName))
-                                entryName += "-" + uid.Id;
+                                entryName += "-" + summary.UniqueId.Id;
+
+                            MessageFlags flags = (summary.Flags ?? MessageFlags.None) & ~MessageFlags.Recent;
+                            flagsByEntryName[entryName] = ToFlagStrings(flags, summary.Keywords!);
+                            messages.Add((summary.UniqueId, entryName, date));
+                        }
+
+                        // per-folder sidecar mapping each entry name to its IMAP flags (system flags prefixed with
+                        // '\', same as the IMAP wire format, custom keywords bare), so Restore can reapply them;
+                        // written ahead of the messages so a reader meets the flags before the entries they describe
+                        string flagsJson = JsonConvert.SerializeObject(flagsByEntryName, Formatting.Indented);
+
+                        writer.AddEntry($"{folderPath}/flags.json", Encoding.UTF8.GetBytes(flagsJson), null);
+
+                        foreach ((UniqueId uid, string entryName, DateTime date) in messages)
+                        {
+                            MimeMessage message = await folder.GetMessageAsync(uid).ConfigureAwait(false);
 
                             // LibArchiveWriter only accepts whole entries as byte arrays, so each message is
                             // serialized into memory before it is added to the archive
                             using (MemoryStream messageStream = new MemoryStream())
                             {
                                 await message.WriteToAsync(messageStream).ConfigureAwait(false);
-                                writer.AddEntry($"{folderPath}/{entryName}.eml", messageStream.ToArray(), message.Date.UtcDateTime);
+                                writer.AddEntry($"{folderPath}/{entryName}.eml", messageStream.ToArray(), date);
                             }
-
-                            IMessageSummary? summary = summaryByUid.TryGetValue(uid, out IMessageSummary? s) ? s : null;
-                            MessageFlags flags = (summary?.Flags ?? MessageFlags.None) & ~MessageFlags.Recent;
-                            flagsByEntryName[entryName] = ToFlagStrings(flags, summary?.Keywords!);
 
                             if (totalMessages > 0)
                                 progress?.Invoke((double)++processedMessages / totalMessages);
                         }
-
-                        // per-folder sidecar mapping each entry name to its IMAP flags (system flags prefixed with
-                        // '\', same as the IMAP wire format, custom keywords bare), so Restore can reapply them
-                        string flagsJson = JsonConvert.SerializeObject(flagsByEntryName, Formatting.Indented);
-
-                        writer.AddEntry($"{folderPath}/flags.json", Encoding.UTF8.GetBytes(flagsJson), null);
                     }
                     finally
                     {
@@ -198,122 +207,142 @@ public class ImapCopier
         {
             string destinationBasePath = GetFolderPath(destination);
 
-            // libarchive reads entries strictly sequentially and Backup writes each folder's flags.json after its
-            // messages, so the archive is scanned twice: first to collect the flags and count the messages, then
-            // (after Reset, which needs a seekable stream) to append the messages
-            Stream archiveStream = source;
-            FileStream? tempFile = null;
+            // libarchive reads entries strictly sequentially, and its 7z reader needs a real file to seek in (the
+            // stream-based reader can't), so a source that isn't a file stream is spooled to a temp file first.
+            // Current archives hold each folder's flags.json ahead of that folder's messages, so one pass suffices;
+            // older archives have it after the messages, so the flags are collected in a first scan and the archive
+            // is reopened. Progress is the share of the archive file's size covered by the entries read so far
+            string archivePath;
+            string? tempPath = null;
 
-            if (!source.CanSeek)
+            if (source is FileStream sourceFile && sourceFile.CanSeek)
             {
-                tempFile = new FileStream(Path.GetTempFileName(), FileMode.Create, FileAccess.ReadWrite,
-                    FileShare.None, 81920, FileOptions.DeleteOnClose);
-                await source.CopyToAsync(tempFile).ConfigureAwait(false);
-                tempFile.Position = 0;
-                archiveStream = tempFile;
+                archivePath = sourceFile.Name;
+            }
+            else
+            {
+                archivePath = tempPath = Path.GetTempFileName();
+
+                using (FileStream tempFile = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    await source.CopyToAsync(tempFile).ConfigureAwait(false);
+            }
+
+            long sourceLength = new FileInfo(archivePath).Length;
+            long bytesRead = 0;
+            string? currentFolderPath = null;
+            IMailFolder? folder = null;
+            Dictionary<string, UniqueId> existingByMessageId = new Dictionary<string, UniqueId>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, Dictionary<string, string[]>> flagsByFolder = new Dictionary<string, Dictionary<string, string[]>>();
+
+            LibArchiveReader archive = new LibArchiveReader(archivePath);
+
+            // the first message-or-flags entry tells the layout: flags.json first means the current format
+            bool flagsFirst = true;
+
+            foreach (LibArchiveReader.Entry entry in archive.Entries())
+            {
+                if (IsMessageOrFlagsEntry(entry, out _, out bool firstIsFlags))
+                {
+                    flagsFirst = firstIsFlags;
+                    break;
+                }
+            }
+
+            archive.Dispose();
+            archive = new LibArchiveReader(archivePath);
+
+            if (!flagsFirst)
+            {
+                foreach (LibArchiveReader.Entry entry in archive.Entries())
+                    if (IsMessageOrFlagsEntry(entry, out string flagsFolderPath, out bool isFlagsEntry) && isFlagsEntry)
+                        flagsByFolder[flagsFolderPath] = LoadFlags(entry);
+
+                archive.Dispose();
+                archive = new LibArchiveReader(archivePath);
             }
 
             try
             {
-                using LibArchiveReader archive = new LibArchiveReader(new NonClosingStream(archiveStream));
-
-                Dictionary<string, Dictionary<string, string[]>> flagsByFolder = new Dictionary<string, Dictionary<string, string[]>>();
-                int totalMessages = 0;
-
                 foreach (LibArchiveReader.Entry entry in archive.Entries())
                 {
                     if (!IsMessageOrFlagsEntry(entry, out string folderPath, out bool isFlags))
                         continue;
 
                     if (isFlags)
-                        flagsByFolder[folderPath] = LoadFlags(entry);
-                    else
-                        totalMessages++;
-                }
-
-                if (progress == null)
-                    totalMessages = 0;
-
-                archive.Reset();
-
-                int processedMessages = 0;
-                string? currentFolderPath = null;
-                IMailFolder? folder = null;
-                Dictionary<string, UniqueId> existingByMessageId = new Dictionary<string, UniqueId>(StringComparer.OrdinalIgnoreCase);
-
-                try
-                {
-                    foreach (LibArchiveReader.Entry entry in archive.Entries())
                     {
-                        if (!IsMessageOrFlagsEntry(entry, out string folderPath, out bool isFlags) || isFlags)
-                            continue;
+                        if (flagsFirst)
+                            flagsByFolder[folderPath] = LoadFlags(entry);
 
-                        if (folderPath != currentFolderPath)
+                        continue;
+                    }
+
+                    if (folderPath != currentFolderPath)
+                    {
+                        if (folder != null)
+                            await folder.CloseAsync().ConfigureAwait(false);
+
+                        folder = null;
+                        currentFolderPath = folderPath;
+
+                        string destinationPath = string.IsNullOrEmpty(destinationBasePath)
+                            ? folderPath
+                            : destinationBasePath + "/" + folderPath;
+
+                        folder = await GetOrCreateFolderAsync(destinationClient, destinationPath).ConfigureAwait(false);
+                        if (folder == null) throw new Exception($"Could not create IMAP folder {destinationPath}");
+                        await folder.OpenAsync(FolderAccess.ReadWrite).ConfigureAwait(false);
+
+                        // messages are matched by Message-Id so restoring the same backup twice is a no-op
+                        existingByMessageId = new Dictionary<string, UniqueId>(StringComparer.OrdinalIgnoreCase);
+
+                        if (folder.Count > 0)
                         {
-                            if (folder != null)
-                                await folder.CloseAsync().ConfigureAwait(false);
+                            IList<UniqueId> existingUids = await folder.SearchAsync(SearchQuery.All).ConfigureAwait(false);
+                            IList<IMessageSummary> existingSummaries = await folder.FetchAsync(
+                                existingUids, MessageSummaryItems.Envelope).ConfigureAwait(false);
 
-                            folder = null;
-                            currentFolderPath = folderPath;
-
-                            string destinationPath = string.IsNullOrEmpty(destinationBasePath)
-                                ? folderPath
-                                : destinationBasePath + "/" + folderPath;
-
-                            folder = await GetOrCreateFolderAsync(destinationClient, destinationPath).ConfigureAwait(false);
-                            if (folder == null) throw new Exception($"Could not create IMAP folder {destinationPath}");
-                            await folder.OpenAsync(FolderAccess.ReadWrite).ConfigureAwait(false);
-
-                            // messages are matched by Message-Id so restoring the same backup twice is a no-op
-                            existingByMessageId = new Dictionary<string, UniqueId>(StringComparer.OrdinalIgnoreCase);
-
-                            if (folder.Count > 0)
+                            foreach (IMessageSummary summary in existingSummaries)
                             {
-                                IList<UniqueId> existingUids = await folder.SearchAsync(SearchQuery.All).ConfigureAwait(false);
-                                IList<IMessageSummary> existingSummaries = await folder.FetchAsync(
-                                    existingUids, MessageSummaryItems.Envelope).ConfigureAwait(false);
-
-                                foreach (IMessageSummary summary in existingSummaries)
-                                {
-                                    string? messageId = summary.Envelope?.MessageId;
-                                    if (!string.IsNullOrEmpty(messageId))
-                                        existingByMessageId[messageId] = summary.UniqueId;
-                                }
+                                string? messageId = summary.Envelope?.MessageId;
+                                if (!string.IsNullOrEmpty(messageId))
+                                    existingByMessageId[messageId] = summary.UniqueId;
                             }
                         }
-
-                        MimeMessage message;
-                        using (Stream entryStream = entry.Stream)
-                            message = await MimeMessage.LoadAsync(entryStream).ConfigureAwait(false);
-
-                        if (string.IsNullOrEmpty(message.MessageId) || !existingByMessageId.ContainsKey(message.MessageId))
-                        {
-                            string entryName = Path.GetFileNameWithoutExtension(entry.Name);
-                            string[]? rawFlags = flagsByFolder.TryGetValue(folderPath, out Dictionary<string, string[]>? folderFlags)
-                                && folderFlags.TryGetValue(entryName, out string[]? f) ? f : null;
-                            (MessageFlags flags, HashSet<string> keywords) = ParseFlagStrings(rawFlags);
-
-                            IAppendRequest request = new AppendRequest(message, flags, keywords, message.Date);
-                            await folder!.AppendAsync(request).ConfigureAwait(false);
-                        }
-
-                        if (totalMessages > 0)
-                            progress?.Invoke((double)++processedMessages / totalMessages);
                     }
-                }
-                finally
-                {
-                    if (folder != null)
-                        await folder.CloseAsync().ConfigureAwait(false);
-                }
 
-                if (progress != null && totalMessages == 0)
-                    progress(1.0);
+                    MimeMessage message;
+                    using (Stream entryStream = entry.Stream)
+                        message = await MimeMessage.LoadAsync(entryStream).ConfigureAwait(false);
+
+                    if (string.IsNullOrEmpty(message.MessageId) || !existingByMessageId.ContainsKey(message.MessageId))
+                    {
+                        string entryName = Path.GetFileNameWithoutExtension(entry.Name);
+                        string[]? rawFlags = flagsByFolder.TryGetValue(folderPath, out Dictionary<string, string[]>? folderFlags)
+                            && folderFlags.TryGetValue(entryName, out string[]? f) ? f : null;
+                        (MessageFlags flags, HashSet<string> keywords) = ParseFlagStrings(rawFlags);
+
+                        IAppendRequest request = new AppendRequest(message, flags, keywords, message.Date);
+                        await folder!.AppendAsync(request).ConfigureAwait(false);
+                    }
+
+                    bytesRead += entry.LengthBytes ?? 0;
+
+                    if (sourceLength > 0)
+                        progress?.Invoke(Math.Min(1.0, (double)bytesRead / sourceLength));
+                }
             }
             finally
             {
-                tempFile?.Dispose();
+                if (folder != null)
+                    await folder.CloseAsync().ConfigureAwait(false);
+
+                archive.Dispose();
+
+                if (tempPath != null)
+                    File.Delete(tempPath);
             }
+
+            progress?.Invoke(1.0);
         }
         finally
         {
